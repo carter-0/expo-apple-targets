@@ -95,7 +95,7 @@ export type Config = {
 
   /**
    * Bundle identifier for the target. Will default to a sanitized version of the root project + name.
-   * If the specified bundle identifier is prefixed with a dot (.), the bundle identifier will be appended to the main app's bundle identifier.
+   * If the specified bundle identifier is prefixed with a dot (.), the bundle identifier will be appended to the appropriate app's bundle identifier.
    **/
   bundleIdentifier?: string;
 

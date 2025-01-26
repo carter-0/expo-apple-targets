@@ -405,3 +405,9 @@ export function getAuxiliaryTargets(project: XcodeProject): PBXNativeTarget[] {
     return target.uuid !== mainTarget?.uuid;
   }) as PBXNativeTarget[];
 }
+
+export function getTargetFromBundleId(project: XcodeProject, bundleId: string): PBXNativeTarget | undefined {
+  return project.rootObject.props.targets.find(
+    (target) => target.props.buildConfigurationList.getDefaultBuildSetting("PRODUCT_BUNDLE_IDENTIFIER") === bundleId
+  ) as PBXNativeTarget;
+}

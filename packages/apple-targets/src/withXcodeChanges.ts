@@ -21,6 +21,7 @@ import assert from "assert";
 import {
   ExtensionType,
   getMainAppTarget,
+  getTargetFromBundleId,
   isNativeTargetOfType,
   needsEmbeddedSwift,
   productTypeForType,
@@ -37,7 +38,7 @@ const TemplateBuildSettings = fixture as unknown as Record<
   }
 >;
 
-export type XcodeSettings = {
+export type BaseXcodeSettings = {
   name: string;
   /** Name used for internal purposes. This has more strict rules and should be generated. */
   productName: string;
@@ -52,8 +53,6 @@ export type XcodeSettings = {
   currentProjectVersion: number;
 
   frameworks: string[];
-
-  type: ExtensionType;
 
   hasAccentColor?: boolean;
 
@@ -71,10 +70,21 @@ export type XcodeSettings = {
   orientation?: "default" | "portrait" | "landscape";
 
   deviceFamilies?: DeviceFamily[];
+};
 
+export type ClipWidgetXcodeSettings = BaseXcodeSettings & {
+  type: "clip-widget";
+  /** The bundle identifier of the App Clip that should be targeted. Required for App Clip Widgets. */
+  appClipBundleId: string;
+};
+
+export type OtherXcodeSettings = BaseXcodeSettings & {
+  type: Exclude<ExtensionType, "clip-widget">;
   /** The bundle identifier of the App Clip that should be targeted. Required for App Clip Widgets. */
   appClipBundleId?: string;
 };
+
+export type XcodeSettings = ClipWidgetXcodeSettings | OtherXcodeSettings;
 
 export type DeviceFamily = "phone" | "tablet";
 
@@ -903,11 +913,23 @@ async function applyXcodeChanges(
   props: XcodeSettings
 ) {
   const mainAppTarget = getMainAppTarget(project);
+  let targetAppTarget: PBXNativeTarget;
+
+  if (props.type === "clip-widget") {
+    // App Clip widgets should modify the App Clip target, not the main app.
+    const clipTarget = getTargetFromBundleId(project, props.appClipBundleId);
+    if (!clipTarget) {
+      throw new Error(`Could not find App Clip target with bundle ID ${props.appClipBundleId}`);
+    }
+    targetAppTarget = clipTarget;
+  } else {
+    targetAppTarget = mainAppTarget;
+  }
 
   // Special setting for share extensions.
   if (needsEmbeddedSwift(props.type)) {
     // Add ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES to the main app target
-    mainAppTarget.setBuildSetting(
+    targetAppTarget.setBuildSetting(
       "ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES",
       "YES"
     );
@@ -1036,7 +1058,7 @@ async function applyXcodeChanges(
 
   function configureJsExport(target: PBXNativeTarget) {
     if (props.exportJs) {
-      const shellScript = mainAppTarget.props.buildPhases.find(
+      const shellScript = targetAppTarget.props.buildPhases.find(
         (phase) =>
           PBXShellScriptBuildPhase.is(phase) &&
           phase.props.name === "Bundle React Native code and images"
@@ -1141,6 +1163,7 @@ async function applyXcodeChanges(
       productType: productType,
     });
 
+    // getCopyBuildPhaseForTarget is only available on the main app target.
     const copyPhase = mainAppTarget.getCopyBuildPhaseForTarget(targetToUpdate);
 
     if (!copyPhase.getBuildFile(appExtensionBuildFile.props.fileRef)) {
@@ -1160,15 +1183,7 @@ async function applyXcodeChanges(
 
   configureJsExport(targetToUpdate);
 
-  if (props.type === "clip-widget") {
-    // App Clip widgets should be added as a dependency to the App Clip, rather than the main app.
-    const appClipTarget = project.rootObject.props.targets.find(
-      (target) => target.props.productName === props.appClipBundleId
-    ) as PBXNativeTarget;
-    appClipTarget.addDependency(targetToUpdate);
-  } else {
-    mainAppTarget.addDependency(targetToUpdate);
-  }
+  targetAppTarget.addDependency(targetToUpdate);
 
   const assetsDir = path.join(magicCwd, "assets");
 
@@ -1233,13 +1248,13 @@ async function applyXcodeChanges(
   const existingExceptionSet = syncRootGroup.props.exceptions.find(
     (exception) =>
       exception instanceof PBXFileSystemSynchronizedBuildFileExceptionSet &&
-      exception.props.target === mainAppTarget
+      exception.props.target === targetAppTarget
   );
   if (sharedAssets.length) {
     const exceptionSet =
       existingExceptionSet ||
       PBXFileSystemSynchronizedBuildFileExceptionSet.create(project, {
-        target: mainAppTarget,
+        target: targetAppTarget,
       });
     exceptionSet.props.membershipExceptions = sharedAssets.sort();
     syncRootGroup.props.exceptions.push(exceptionSet);
