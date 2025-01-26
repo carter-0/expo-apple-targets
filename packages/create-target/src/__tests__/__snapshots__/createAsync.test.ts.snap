@@ -43,6 +43,16 @@ module.exports = config => ({
 });"
 `;
 
+exports[`getTemplateConfig should return a valid template for clip-widget 1`] = `
+"/** @type {import('@bacons/apple-targets/app.plugin').ConfigFunction} */
+module.exports = config => ({
+  type: \\"clip-widget\\",
+  icon: 'https://github.com/expo.png',
+  appClipBundleId: \\"com.example.app.clip\\", // The bundle identifier of the App Clip
+  entitlements: { /* Add entitlements */ },
+});"
+`;
+
 exports[`getTemplateConfig should return a valid template for credentials-provider 1`] = `
 "/** @type {import('@bacons/apple-targets/app.plugin').ConfigFunction} */
 module.exports = config => ({

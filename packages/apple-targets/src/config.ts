@@ -140,6 +140,12 @@ export type Config = {
 
   /** Should the release build export the JS bundle and embed. Intended for App Clips and Share Extensions where you may want to use React Native. */
   exportJs?: boolean;
+
+  /**
+   * The bundle identifier of the App Clip that should be targeted. Required for App Clip Widgets.
+   * @example "com.example.app.clip"
+   */
+  appClipBundleId?: string;
 };
 
 export type ConfigFunction = (

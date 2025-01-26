@@ -1,17 +1,14 @@
 import {
   PBXBuildFile,
-  PBXContainerItemProxy,
-  PBXCopyFilesBuildPhase,
   PBXFileReference,
   PBXFileSystemSynchronizedBuildFileExceptionSet,
   PBXFileSystemSynchronizedRootGroup,
   PBXGroup,
   PBXNativeTarget,
   PBXShellScriptBuildPhase,
-  PBXTargetDependency,
   XCBuildConfiguration,
   XCConfigurationList,
-  XcodeProject,
+  XcodeProject
 } from "@bacons/xcode";
 import { BuildSettings } from "@bacons/xcode/json";
 import { ExpoConfig } from "@expo/config";
@@ -20,6 +17,7 @@ import fs from "fs";
 import { sync as globSync } from "glob";
 import path from "path";
 
+import assert from "assert";
 import {
   ExtensionType,
   getMainAppTarget,
@@ -28,6 +26,7 @@ import {
   productTypeForType,
 } from "./target";
 import fixture from "./template/XCBuildConfiguration.json";
+import { withXcodeProjectBeta } from "./withXcparse";
 const TemplateBuildSettings = fixture as unknown as Record<
   string,
   {
@@ -37,8 +36,6 @@ const TemplateBuildSettings = fixture as unknown as Record<
     info: any;
   }
 >;
-import { withXcodeProjectBeta } from "./withXcparse";
-import assert from "assert";
 
 export type XcodeSettings = {
   name: string;
@@ -74,6 +71,9 @@ export type XcodeSettings = {
   orientation?: "default" | "portrait" | "landscape";
 
   deviceFamilies?: DeviceFamily[];
+
+  /** The bundle identifier of the App Clip that should be targeted. Required for App Clip Widgets. */
+  appClipBundleId?: string;
 };
 
 export type DeviceFamily = "phone" | "tablet";
@@ -871,7 +871,7 @@ function createConfigurationListForType(
   project: XcodeProject,
   props: XcodeSettings
 ) {
-  if (props.type === "widget") {
+  if (props.type === "widget" || props.type === "clip-widget") {
     return createConfigurationList(project, props);
   } else if (props.type === "action") {
     return createExtensionConfigurationListFromTemplate(
@@ -1160,7 +1160,15 @@ async function applyXcodeChanges(
 
   configureJsExport(targetToUpdate);
 
-  mainAppTarget.addDependency(targetToUpdate);
+  if (props.type === "clip-widget") {
+    // App Clip widgets should be added as a dependency to the App Clip, rather than the main app.
+    const appClipTarget = project.rootObject.props.targets.find(
+      (target) => target.props.productName === props.appClipBundleId
+    ) as PBXNativeTarget;
+    appClipTarget.addDependency(targetToUpdate);
+  } else {
+    mainAppTarget.addDependency(targetToUpdate);
+  }
 
   const assetsDir = path.join(magicCwd, "assets");
 

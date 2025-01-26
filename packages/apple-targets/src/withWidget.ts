@@ -1,9 +1,9 @@
 import { ConfigPlugin, withDangerousMod } from "@expo/config-plugins";
 import plist from "@expo/plist";
+import chalk from "chalk";
 import fs from "fs";
 import { sync as globSync } from "glob";
 import path from "path";
-import chalk from "chalk";
 
 import { withIosColorset } from "./colorset/withIosColorset";
 import { Config, Entitlements } from "./config";
@@ -196,6 +196,11 @@ const withWidget: ConfigPlugin<Props> = (config, props) => {
         // entitlements["com.apple.developer.on-demand-install-capable"] = true;
       }
 
+      if (props.type === "clip-widget") {
+        // Widget Extensions in App Clips require this entitlement.
+        entitlements["com.apple.developer.on-demand-install-capable"] = true;
+      }
+
       const APP_GROUP_KEY = "com.apple.security.application-groups";
       const hasDefinedAppGroupsManually = APP_GROUP_KEY in entitlements;
 
@@ -323,6 +328,10 @@ const withWidget: ConfigPlugin<Props> = (config, props) => {
   const bundleId: string = (() => {
     // Support the bundle identifier being appended to the main app's bundle identifier.
     if (props.bundleIdentifier?.startsWith(".")) {
+      if (props.type === "clip-widget") {
+        // Widget Extensions in App Clips must be prefixed with the App Clip's bundle identifier.
+        return props.appClipBundleId + props.bundleIdentifier;
+      }
       return mainAppBundleId + props.bundleIdentifier;
     } else if (props.bundleIdentifier) {
       return props.bundleIdentifier;
@@ -331,6 +340,10 @@ const withWidget: ConfigPlugin<Props> = (config, props) => {
     if (props.type === "clip") {
       // Use a more standardized bundle identifier for App Clips.
       return mainAppBundleId + ".clip";
+    }
+
+    if (props.type === "clip-widget") {
+      return props.appClipBundleId + ".widget";
     }
 
     let bundleId = mainAppBundleId;
@@ -377,6 +390,9 @@ const withWidget: ConfigPlugin<Props> = (config, props) => {
       props.exportJs ??
       // Assume App Clips are used for React Native.
       props.type === "clip",
+
+    // Only App Clip widgets need the appClipBundleId.
+    ...(props.type === "clip-widget" ? { appClipBundleId: props.appClipBundleId } : {}),
   });
 
   config = withEASTargets(config, {

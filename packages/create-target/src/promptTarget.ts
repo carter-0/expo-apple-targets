@@ -23,6 +23,11 @@ export const TARGETS = [
     value: "clip",
     description: "Instantly open your app without installing",
   },
+  {
+    title: "App Clip Widget",
+    value: "clip-widget",
+    description: "Widget Extension for App Clip",
+  },
   { title: "App Intent", value: "app-intent", description: "" },
   { title: "Background Download", value: "bg-download", description: "" },
   {

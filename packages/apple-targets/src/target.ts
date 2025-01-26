@@ -14,6 +14,7 @@ export type ExtensionType =
   | "quicklook-thumbnail"
   | "imessage"
   | "clip"
+  | "clip-widget"
   | "watch"
   | "location-push"
   | "credentials-provider"
@@ -55,6 +56,7 @@ export const SHOULD_USE_APP_GROUPS_BY_DEFAULT: Record<ExtensionType, boolean> =
     share: true,
     "bg-download": true,
     clip: true,
+    "clip-widget": true,
     widget: true,
     "account-auth": false,
     "credentials-provider": false,
@@ -317,7 +319,7 @@ export function needsEmbeddedSwift(type: ExtensionType) {
 }
 
 export function getFrameworksForType(type: ExtensionType) {
-  if (type === "widget") {
+  if (type === "widget" || type === "clip-widget") {
     return [
       // CD07060B2A2EBE2E009C1192 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
       "WidgetKit",

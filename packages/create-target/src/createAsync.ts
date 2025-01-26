@@ -3,17 +3,17 @@ import chalk from "chalk";
 import fs from "fs";
 import path from "path";
 
-import { normalizeStaticPlugin } from "@expo/config-plugins/build/utils/plugin-resolver";
 import { ExpoConfig, getConfig, modifyConfigAsync } from "@expo/config";
-import resolveFrom from "resolve-from";
+import { normalizeStaticPlugin } from "@expo/config-plugins/build/utils/plugin-resolver";
 import { copy, remove } from "fs-extra";
+import resolveFrom from "resolve-from";
+import { Log } from "./log";
 import {
   assertValidTarget,
   confirmAsync,
   promptTargetAsync,
 } from "./promptTarget";
 import { env } from "./utils/env";
-import { Log } from "./log";
 
 // @ts-ignore
 import { getTargetInfoPlistForType } from "@bacons/apple-targets/build/target";
@@ -186,6 +186,7 @@ export function getTemplateConfig(target: string) {
   const shouldAddIcon = [
     "widget",
     "clip",
+    "clip-widget",
     "action",
     "safari",
     "share",
@@ -211,6 +212,8 @@ export function getTemplateConfig(target: string) {
     lines.push(
       '  "frameworks": ["UIKit", "Social", "MobileCoreServices", "UniformTypeIdentifiers"],'
     );
+  } else if (target === "clip-widget") {
+    lines.push(`  appClipBundleId: "com.example.app.clip", // The bundle identifier of the App Clip`);
   }
 
   if (RECOMMENDED_ENTITLEMENTS[target]) {
