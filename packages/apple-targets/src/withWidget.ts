@@ -2,7 +2,7 @@ import { ConfigPlugin, withDangerousMod } from "@expo/config-plugins";
 import plist from "@expo/plist";
 import chalk from "chalk";
 import fs from "fs";
-import { sync as globSync } from "glob";
+import { globSync } from "glob";
 import path from "path";
 
 import { withIosColorset } from "./colorset/withIosColorset";
