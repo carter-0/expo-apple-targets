@@ -1,11 +1,14 @@
 import {
   PBXBuildFile,
+  PBXContainerItemProxy,
+  PBXCopyFilesBuildPhase,
   PBXFileReference,
   PBXFileSystemSynchronizedBuildFileExceptionSet,
   PBXFileSystemSynchronizedRootGroup,
   PBXGroup,
   PBXNativeTarget,
   PBXShellScriptBuildPhase,
+  PBXTargetDependency,
   XCBuildConfiguration,
   XCConfigurationList,
   XcodeProject
@@ -92,9 +95,10 @@ export const withXcodeChanges: ConfigPlugin<XcodeSettings> = (
   config,
   props
 ) => {
-  return withXcodeProjectBeta(config, (config) => {
+  return withXcodeProjectBeta(config, async (config) => {
     // @ts-ignore
-    applyXcodeChanges(config, config.modResults, props);
+    // NOTE: important to await here, so that withMods "wait" for another one to finish first
+    await applyXcodeChanges(config, config.modResults, props);
     return config;
   });
 };
@@ -1185,6 +1189,62 @@ async function applyXcodeChanges(
 
   targetAppTarget.addDependency(targetToUpdate);
 
+  const dTarget = project.rootObject.props.targets.find(
+    (target) => target.props.productName === targetToUpdate!.props.productName
+  );
+
+  if (dTarget) {
+    // On a target the productReference is a PBXFileReference, however, its not in the types currently, so we check for it:
+    let productReference: PBXFileReference;
+    if (
+      "productReference" in dTarget.props &&
+      PBXFileReference.is(dTarget.props.productReference)
+    ) {
+      productReference = dTarget.props.productReference;
+    } else {
+      throw new Error(
+        `You declared ${targetAppTarget.props.productName} to depend on ${dTarget.props.productName}, but ${dTarget.props.productName} is invalid (missing appex reference) and can't be used!`
+      );
+    }
+
+    const containerItemProxy = PBXContainerItemProxy.create(project, {
+      containerPortal: project.rootObject,
+      proxyType: 1,
+      remoteGlobalIDString: dTarget.uuid,
+      remoteInfo: dTarget.props.productName,
+    });
+    const targetDependency = PBXTargetDependency.create(project, {
+      target: targetAppTarget,
+      targetProxy: containerItemProxy,
+    });
+    
+    targetAppTarget.props.dependencies.push(targetDependency);
+
+    // We also need to add a build phase "Embed Foundation Extension" to the widget target
+    targetAppTarget.createBuildPhase(PBXCopyFilesBuildPhase, {
+      dstSubfolderSpec: 13,
+      buildActionMask: 2147483647,
+      files: [
+        PBXBuildFile.create(project, {
+          fileRef: productReference,
+          settings: {
+            ATTRIBUTES: ["RemoveHeadersOnCopy"],
+          },
+        }),
+      ],
+      name: "Embed Foundation Extensions",
+      runOnlyForDeploymentPostprocessing: 0,
+    });
+  }
+
+  // for targets in project.rootObject.props.targets
+  // print dependencies
+  console.log("\n\n\ndeps")
+  project.rootObject.props.targets.forEach((target) => {
+    console.log(target.props.productName, JSON.stringify(target.props.dependencies, null, 2));
+  })
+  console.log("\n\n\n")
+
   const assetsDir = path.join(magicCwd, "assets");
 
   // TODO: Maybe just limit this to Safari extensions?
@@ -1265,6 +1325,13 @@ async function applyXcodeChanges(
 
   applyDevelopmentTeamIdToTargets();
   syncMarketingVersions();
+
+  console.log("\n\n\ndeps")
+  project.rootObject.props.targets.forEach((target) => {
+    console.log(target.props.productName, JSON.stringify(target.props.dependencies, null, 2));
+  })
+  console.log("\n\n\n")
+
   return project;
 }
 

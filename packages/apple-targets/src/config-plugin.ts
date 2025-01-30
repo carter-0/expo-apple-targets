@@ -1,12 +1,12 @@
 import { ConfigPlugin } from "@expo/config-plugins";
+import chalk from "chalk";
 import { globSync } from "glob";
 import path from "path";
-import chalk from "chalk";
 
 import type { Config, ConfigFunction } from "./config";
 import { withPodTargetExtension } from "./withPodTargetExtension";
 import withWidget from "./withWidget";
-import { withXcodeProjectBetaBaseMod } from "./withXcparse";
+import { withXcodeProjectBeta, withXcodeProjectBetaBaseMod } from "./withXcparse";
 
 let hasWarned = false;
 export const withTargetsDir: ConfigPlugin<
@@ -66,6 +66,15 @@ export const withTargetsDir: ConfigPlugin<
   });
 
   withPodTargetExtension(config);
+
+  withXcodeProjectBeta(config, (cfg) => {
+    console.log("\n\n\ndeps")
+    cfg.modResults.rootObject.props.targets.forEach((target) => {
+      console.log(target.props.productName, JSON.stringify(target.props.dependencies, null, 2));
+    })
+    console.log("\n\n\n")
+    return cfg;
+  });
 
   withXcodeProjectBetaBaseMod(config);
 

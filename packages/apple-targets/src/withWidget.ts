@@ -12,7 +12,7 @@ import { withIosIcon } from "./icon/withIosIcon";
 import {
   getFrameworksForType,
   getTargetInfoPlistForType,
-  SHOULD_USE_APP_GROUPS_BY_DEFAULT,
+  SHOULD_USE_APP_GROUPS_BY_DEFAULT
 } from "./target";
 import { withEASTargets } from "./withEasCredentials";
 import { DeviceFamily, withXcodeChanges } from "./withXcodeChanges";
